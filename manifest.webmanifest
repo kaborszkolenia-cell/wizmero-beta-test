@@ -1,7 +1,7 @@
 {
   "name": "Wizmero · Twój czas. Twoi klienci.",
   "short_name": "Wizmero",
-  "description": "Prosty terminarz wizyt dla mikrofirm. Wersja testowa 0.8.",
+  "description": "Prosty terminarz wizyt dla mikrofirm. Wersja testowa 0.8.1.",
   "lang": "pl",
   "id": "./",
   "start_url": "./index.html",

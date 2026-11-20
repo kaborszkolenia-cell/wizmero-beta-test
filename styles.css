@@ -60,3 +60,18 @@ body.wz-modal-open{overflow:hidden;overscroll-behavior:none}
 @media(min-width:650px){.sheet-backdrop{align-items:center;padding:28px}.booking-sheet{border-radius:20px;max-height:90dvh}}
 @media(max-width:390px){.sheet-scroll{padding-left:13px;padding-right:13px}.sheet-header{padding-left:13px;padding-right:13px}.sheet-scroll .time-edit-grid{gap:6px}.time-direct{font-size:14px}.sheet-scroll .stepper button{width:28px;min-width:27px}.hour-label{font-size:15px}}
 @media(prefers-reduced-motion:reduce){.booking-sheet{animation:none}}
+
+/* Wizmero 0.8.1: minimum continuous free time, accessible small-break markers */
+.timeline-break{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:10px 14px;color:#63758A;background:#EFF1F4;border-bottom:1px solid #D9E1E8}
+.timeline-break .hour-label{font-size:13px;font-weight:650;color:#5D6D7F}
+.break-info{font-size:12px;font-weight:650;white-space:nowrap;color:#657386}
+.min-card{background:#F8FBFE}
+.min-choices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.min-option{border:1px solid #BBD0E0;border-radius:10px;background:#FFF;color:#285878;font-weight:750;min-height:44px;padding:8px 1px}
+.min-option.active{background:#3D5A80;border-color:#3D5A80;color:#FFF}
+.min-description{font-size:12px;color:#47617A;line-height:1.5;margin-top:12px}
+.min-preview{display:flex;flex-direction:column;gap:5px;background:#F0F3F7;border-radius:10px;padding:11px;margin-top:13px;font-size:12px;color:#526678}
+.min-preview span:nth-child(2){background:#E0EBF8;color:#254D75;padding:7px;border-radius:7px}
+.min-preview span:not(:nth-child(2)){background:#E6E8EC;padding:6px;border-radius:7px}
+.min-preview b{font-size:11px;font-weight:700;color:#8F3B44;line-height:1.4;margin-top:4px}
+@media(max-width:360px){.min-choices{gap:4px}.min-option{font-size:12px}}

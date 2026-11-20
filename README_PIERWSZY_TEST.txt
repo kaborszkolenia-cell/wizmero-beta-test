@@ -1,7 +1,7 @@
-WIZMERO 0.8 MOBILE BETA · by KK & Felix
+WIZMERO 0.8.1 MOBILE BETA · by KK & Felix
 ---------------------------------------
 
-CO NOWEGO W 0.8
+CO NOWEGO W 0.8.1
 • Widok dnia to jedna czytelna oś czasu z wolnymi godzinami i wizytami pośrodku.
 • Zapisana wizyta zajmuje dokładnie swój przedział: 12:30–13:00, a nie całą godzinę.
 • Nowa wizyta i Edytuj otwierają ten sam wysuwany panel nad kalendarzem.
@@ -19,7 +19,7 @@ PRZED AKTUALIZACJĄ Z 0.7
 2. W 0.7 otwórz Opcje > Kopia zapasowa. Pobierz zaszyfrowaną kopię i zapisz hasło
    w bezpiecznym miejscu. Przygotowanie kopii przed aktualizacją jest obowiązkową
    ostrożnością testową.
-3. Wgranie 0.8 do tego SAMEGO repozytorium zachowuje adres witryny oraz nazwę
+3. Wgranie 0.8.1 do tego SAMEGO repozytorium zachowuje adres witryny oraz nazwę
    lokalnej bazy IndexedDB. Powinno zachować dotychczasowe dane, ale musimy to
    jeszcze potwierdzić podczas testu na Twoim telefonie.
 
@@ -50,3 +50,8 @@ To nadal beta do testów z fikcyjnymi klientami. Nie przechowuj rzeczywistych
 numerów i danych klientów. Nie ma automatycznej wysyłki SMS i brak potwierdzenia
 doręczenia. Kopia eksportowana jest szyfrowana hasłem, ale dane na urządzeniu
 nie są obecnie zaszyfrowane przez samą aplikację.
+
+WIZMERO 0.8.1: w Opcjach ustaw minimalny czas wizyty (10/15/20/30 min).
+Krotkie przerwy sa widoczne, ale nie mozna ich kliknac.
+Zielony dzien wymaga jednego nieprzerwanego wolnego przedzialu co najmniej tak dlugiego jak minimum.
+Po przejsciu z 0.8 na 0.8.1 zachowujemy ten sam IndexedDB i schemat 1.
