@@ -1,57 +1,66 @@
-WIZMERO 0.8.1 MOBILE BETA · by KK & Felix
----------------------------------------
+WIZMERO 0.8.2 MOBILE BETA · by KK & Felix
+========================================
 
-CO NOWEGO W 0.8.1
-• Widok dnia to jedna czytelna oś czasu z wolnymi godzinami i wizytami pośrodku.
-• Zapisana wizyta zajmuje dokładnie swój przedział: 12:30–13:00, a nie całą godzinę.
-• Nowa wizyta i Edytuj otwierają ten sam wysuwany panel nad kalendarzem.
-• Godzinę rozpoczęcia i zakończenia możesz skorygować przyciskami +/− co 5 minut,
-  albo wpisać 24-godzinną godzinę jako GG:MM (np. 09:25, ewentualnie 0925).
-• Zmiana początku przesuwa zakończenie, zachowując długość wizyty.
-• Małe wolne okienko, np. 09:15–09:25, jest dostępne i podpowiada 10 minut.
-• W formularzu otworzysz „Moi klienci”, bez opuszczania okna wizyty.
-• W bazie „Moi klienci” przycisk „Umów wizytę” uzupełnia dane wybranego klienta.
-• Przełożenie wizyty wymaga teraz potwierdzenia w tym samym formularzu.
-• Dotychczasowy ekran główny, logo wariant D, Opcje, SMS i kopie danych pozostają.
+NOWOŚĆ: JEDNORAZOWE PRZERWY / BLOKADY CZASU
+- Wybierz dzień w „Mój terminarz” i kliknij „+ Zablokuj czas”.
+- Ustal początek i koniec przerwy co 5 minut, przyciskami + / − lub wpisując GG:MM.
+- Opcjonalnie wpisz opis, np. „Obiad”, „Spacer”, „Sprawy prywatne”.
+- Zatwierdź „Zapisz przerwę”. Przerwa pojawi się na osi dnia między wizytami.
+- Na bloku przerwy użyj „Edytuj”, aby zmienić godziny lub opis.
+- Użyj „Usuń przerwę” i potwierdź, aby znów udostępnić ten czas klientom.
+- Przerwy blokują kolizje z rezerwacjami i z innymi przerwami.
+- Przerwa nie tworzy nowego klienta, nie wysyła i nie przygotowuje SMS.
+- Kolor dnia uwzględnia przerwy i ustawiony minimalny czas wizyty.
+- Wolne 5 + 5 minut rozdzielone przerwą nadal nie oznacza wolnego terminu 10 minut.
 
-PRZED AKTUALIZACJĄ Z 0.7
-1. Nie usuwaj aplikacji z telefonu i nie czyść danych przeglądarki.
-2. W 0.7 otwórz Opcje > Kopia zapasowa. Pobierz zaszyfrowaną kopię i zapisz hasło
-   w bezpiecznym miejscu. Przygotowanie kopii przed aktualizacją jest obowiązkową
-   ostrożnością testową.
-3. Wgranie 0.8.1 do tego SAMEGO repozytorium zachowuje adres witryny oraz nazwę
-   lokalnej bazy IndexedDB. Powinno zachować dotychczasowe dane, ale musimy to
-   jeszcze potwierdzić podczas testu na Twoim telefonie.
+BEZ ZMIAN W STOSUNKU DO 0.8.1
+- Wybrana nazwa, slogan, logo D, dwa granaty i ekran główny.
+- Klienci, rezerwacje, edycja i przenoszenie wizyt, SMS-y, personalizowane szablony.
+- Chronologiczny terminarz dzienny, wysuwany formularz i edycja godzin co 5 minut.
+- Opcje -> Minimalny czas wizyty (10 / 15 / 20 / 30 min).
+- Ta sama nazwa bazy IndexedDB oraz schemat danych nr 1.
+- Stare dane i kopie 0.8.1 bez pola „breaks” otrzymują pustą listę przerw.
+- Przerwy zapisują się razem z danymi w szyfrowanej kopii zapasowej.
 
-JAK OPUBLIKOWAĆ
-1. Rozpakuj ZIP na komputerze.
-2. Otwórz https://github.com/kaborszkolenia-cell/wizmero-beta-test
-3. Add file > Upload files, prześlij WSZYSTKIE pliki i folder assets ze środka paczki,
-   a następnie zatwierdź zmiany.
-4. Sprawdź, czy w repozytorium index.html, app.js, styles.css i sw.js są w katalogu głównym.
-5. Po zielonym statusie GitHub Pages otwórz na telefonie ten sam adres:
+AKTUALIZACJA Z 0.8.1
+1. ZANIM wgrasz nową paczkę, w działającym Wizmero 0.8.1 otwórz
+   Opcje -> Kopia zapasowa, pobierz szyfrowaną kopię i zachowaj hasło.
+2. Nie usuwaj ikony/aplikacji z telefonu i nie czyść danych przeglądarki.
+3. Rozpakuj ZIP na komputerze.
+4. Otwórz https://github.com/kaborszkolenia-cell/wizmero-beta-test
+5. Add file -> Upload files: wgraj WSZYSTKIE pliki z wnętrza paczki
+   i folder assets, zastępując poprzednie pliki. Zatwierdź zmiany.
+6. W katalogu głównym repozytorium powinny leżeć index.html, app.js,
+   styles.css, sw.js i manifest.webmanifest. Nie wgrywaj samego ZIP.
+7. Po zakończeniu publikacji GitHub Pages otwórz na telefonie ten sam adres:
    https://kaborszkolenia-cell.github.io/wizmero-beta-test/
-6. Jeśli pojawia się stara wersja, zamknij aplikację i uruchom ponownie online.
-   Nowy service worker może uaktywnić się dopiero po kolejnym otwarciu.
+8. Jeśli widać starą wersję, zamknij i ponownie uruchom aplikację online.
+   Aktualizacja pamięci offline (service worker) może wymagać kolejnego otwarcia.
 
-PROPONOWANE TESTY
-• 25.11: Jan 12:30–13:00, Ola 13:00–14:00; 12:00–12:30 wolne, 12:00–13:00 koliduje.
-• Na 24.11 zapisz 08:05–09:15 i 09:25–10:25.
-• Sprawdź korektę godzin i zmianę czasu w wyskakującym oknie.
-• Test: krótka przerwa 09:15–09:25 pozwala rozpocząć wizytę na 10 minut.
-• Test: wyszukaj Jana po 98765 w „Moi klienci” podczas umawiania wizyty.
-• Test: „Umów wizytę” na karcie klienta, a następnie edytuj i przełóż wizytę.
-• Zamknij aplikację, uruchom ponownie i sprawdź, czy wizyty oraz klienci pozostały.
-• Sprawdź wygląd panelu na Androidzie, a następnie na iPhonie.
-• SMS testuj WYŁĄCZNIE na własny numer telefonu.
+TESTY TELEFONICZNE
+A. 25.11.2026: spróbuj zablokować 12:00–14:00.
+   Zapis powinien być zablokowany z powodu wizyt Jana i Oli.
+B. Ten sam dzień: zablokuj 10:00–12:00, opis „Spacer z dzieckiem”.
+   Sprawdź wpis na osi czasu, a także blokadę wizyty 11:00–11:30.
+C. Edytuj przerwę na 10:05–12:05. Zamknij aplikację i otwórz ponownie:
+   przerwa powinna pozostać.
+D. Usuń przerwę z potwierdzeniem. Wolne godziny powinny wrócić.
+E. Skróć wybrany dzień roboczy do 08:00–10:00 i zablokuj cały przedział:
+   dzień powinien być czerwony. Zmień przerwę na 08:05–09:55:
+   nadal czerwony, bo po bokach zostaje tylko 5 + 5 minut.
+F. Sprawdź, czy baza klientów, stare wizyty i ustawienia pozostały.
+G. Przypomnienia SMS testuj WYŁĄCZNIE na swoim numerze.
+
+CO JUŻ SPRAWDZONO
+Automatyczne testy interfejsu Chromium: tworzenie, kolizje, edycja,
+usunięcie i zmiana koloru dnia – zaliczone. Regresja minimum 10/15 min,
+zapisu krótkich wizyt i 5+5 minut – zaliczona. Testy migracji i zapisu
+w symulowanym magazynie danych – zaliczone. Faktyczne zachowanie bazy
+IndexedDB po aktualizacji na iPhonie/Androidzie nadal do weryfikacji.
 
 OGRANICZENIA
-To nadal beta do testów z fikcyjnymi klientami. Nie przechowuj rzeczywistych
-numerów i danych klientów. Nie ma automatycznej wysyłki SMS i brak potwierdzenia
-doręczenia. Kopia eksportowana jest szyfrowana hasłem, ale dane na urządzeniu
-nie są obecnie zaszyfrowane przez samą aplikację.
-
-WIZMERO 0.8.1: w Opcjach ustaw minimalny czas wizyty (10/15/20/30 min).
-Krotkie przerwy sa widoczne, ale nie mozna ich kliknac.
-Zielony dzien wymaga jednego nieprzerwanego wolnego przedzialu co najmniej tak dlugiego jak minimum.
-Po przejsciu z 0.8 na 0.8.1 zachowujemy ten sam IndexedDB i schemat 1.
+BETA: używaj wyłącznie fikcyjnych danych. Baza lokalna nie jest
+szyfrowana przez samą aplikację, a kopie eksportowane są szyfrowane.
+Nie ma automatycznej wysyłki ani potwierdzenia doręczenia SMS.
+Przed wprowadzeniem prawdziwych klientów potrzebujemy dalszych testów
+bezpieczeństwa, przechowywania i przywracania danych oraz RODO.

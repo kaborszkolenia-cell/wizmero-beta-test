@@ -75,3 +75,13 @@ body.wz-modal-open{overflow:hidden;overscroll-behavior:none}
 .min-preview span:not(:nth-child(2)){background:#E6E8EC;padding:6px;border-radius:7px}
 .min-preview b{font-size:11px;font-weight:700;color:#8F3B44;line-height:1.4;margin-top:4px}
 @media(max-width:360px){.min-choices{gap:4px}.min-option{font-size:12px}}
+
+/* 0.8.2: one-off working-time blocks, same visual language as visit cards */
+.calendar-heading{flex-wrap:wrap;align-items:flex-start;gap:9px}
+.calendar-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.calendar-actions .btn{white-space:nowrap}
+.timeline-block{background:#E9EFF7;border:0;border-left:5px solid #788FAB;border-bottom:1px solid #B6C8DA;padding:13px 11px}
+.timeline-block .strong{color:#244764}
+.timeline-block .muted{color:#62778D}
+.block-lock{background:#D5E1ED;color:#385672;padding:6px;border-radius:10px;flex:none;font-size:18px}
+@media(max-width:380px){.calendar-actions{width:100%;justify-content:space-between}.calendar-actions .btn{flex:1}}
