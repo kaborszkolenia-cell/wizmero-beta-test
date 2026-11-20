@@ -1,0 +1,20 @@
+LOWRI 1.0.1 SECURITY BETA · poprawka WYŁĄCZNIE graficzna
+========================================================
+Zmiany: 30% mniejszy blok logo; logo zatwierdzone przez użytkownika bez prostokątnego tła; płynne przejście granatów nagłówka; niższy ekran blokady.
+Bez zmian: app logic, schema IndexedDB, klienci, wizyty, przerwy, SMS, hasła, szyfrowanie, import/eksport .wzm.
+
+AKTUALIZACJA NA GITHUB PAGES
+1. Przed aktualizacją wykonaj kopię .wzm w dotychczasowym LOWRI / Wizmero.
+2. Otwórz repozytorium kaborszkolenia-cell/wizmero-beta-test na GitHub.
+3. Add file > Upload files, przeciągnij ZAWARTOŚĆ wypakowanego folderu (nie zip).
+   Przekopiuj także cały podfolder assets. index.html w katalogu głównym.
+4. Zatwierdź zmiany (Commit changes). GitHub Pages przebuduje stronę pod dotychczasowym URL.
+5. W przeglądarce otwórz już istniejący adres https://kaborszkolenia-cell.github.io/wizmero-beta-test/.
+6. Sprawdź nowy logo, brak ciemnego prostokąta, logowanie, bazę i ponowne uruchomienie.
+7. Nie usuwaj aplikacji z telefonu i nie czyść danych przeglądarki.
+
+UWAGI
+- Plik ZIP obejmuje CAŁĄ aplikację do zastąpienia; można go potem użyć także na Cloudflare Pages.
+- Nowa wersja NIE zmienia formatu szyfrowania i nie usuwa danych z telefonu.
+- Dane z GitHub Pages NIE przejdą automatycznie na inny adres; przenoś kopią .wzm.
+- Beta: wyłącznie dane fikcyjne do czasu testów odzyskiwania kopii i audytu bezpieczeństwa.

@@ -85,3 +85,146 @@ body.wz-modal-open{overflow:hidden;overscroll-behavior:none}
 .timeline-block .muted{color:#62778D}
 .block-lock{background:#D5E1ED;color:#385672;padding:6px;border-radius:10px;flex:none;font-size:18px}
 @media(max-width:380px){.calendar-actions{width:100%;justify-content:space-between}.calendar-actions .btn{flex:1}}
+
+/* SECURE BETA 0.9: password-based AES-GCM storage. Standalone lock screen. */
+.security-toolbar{padding:7px 14px;background:#ECF4FA;color:#2F577B;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px}
+.security-toolbar button{border:1px solid #A7C3DB;background:white;border-radius:9px;color:#294E6C;padding:6px 11px;font-weight:700}
+.sec-shell{min-height:75vh;background:#F5F8FC;color:#172D47}
+.sec-header{background:linear-gradient(120deg,#244969,#3D5A80 75%,#55799B);color:white;text-align:center;padding:38px 14px 41px;border-radius:0 0 48% 48% / 0 0 12% 12%}
+.sec-header h1{font-size:34px;font-weight:850;margin:4px 0 0;letter-spacing:-.9px}
+.sec-header p{font-weight:650;margin:3px 0 0}.sec-by{font-size:11px;margin-top:7px;color:#D5E4F3;font-style:italic}
+.sec-content{max-width:460px;margin:auto;padding:23px 19px 38px}
+.sec-content h2{font-size:21px;color:#173C5C;text-align:center;margin:8px 0 16px}
+.sec-lock{font-size:37px;text-align:center}
+.sec-content .btn{margin:18px 0 6px;min-height:48px}
+.sec-note{background:#E6F0F8;border-radius:11px;font-size:12px;line-height:1.55;color:#405B76;padding:12px;margin:15px 0}
+.sec-reset{background:none;border:none;color:#923D47;display:block;margin:17px auto;text-decoration:underline;font-size:12px;padding:8px}
+
+
+/* LOWRI 1.0 · Approved original Midnight Navy / Amber Gold visual identity.
+   Cosmetic overrides only: state/data operations are untouched. */
+:root{
+ --navy:#080F25;--blue:#253C60;--accent:#D6A44F;--ice:#F6F5F2;
+ --line:#D4D9E3;--ink:#18253D;--muted:#617087;
+ --green:#1F754B;--goodbg:#E2F3E7;--red:#A43F46;--redbg:#FBE6E8;
+ --shadow:0 5px 16px rgba(8,15,37,.07);
+ background:#E8EBF1;
+}
+#app{background:var(--ice);box-shadow:0 0 35px #080F2514}
+.hero{
+ min-height:0;padding:17px 15px 41px;
+ background:linear-gradient(135deg,#080F25 0%,#0E1931 65%,#172847 100%);
+}
+.hero::after{background:#D6A44F;height:46px;bottom:-26px;opacity:.65}
+.hero::before{background:var(--ice);bottom:-39px;height:53px}
+.brand{display:flex;justify-content:center;align-items:center}
+.brand img.brand-logo{display:block;width:min(294px,88vw);height:auto;max-width:100%;border-radius:0;box-shadow:none;object-fit:contain}
+.subhead{background:linear-gradient(125deg,#080F25 0%,#152544 62%,#253C60 100%);color:#F5ECDC}
+.subhead h2{font-weight:750;color:#F4E9D5;letter-spacing:.15px}
+.go-home{border-color:#D6A44F66;color:#E3B966}
+.main{background:var(--ice)}
+.tile{background:#FFFFFF;border:1px solid #D5DBE6;box-shadow:var(--shadow)}
+.tile:hover,.tile:active{background:#F9F8F5;border-color:#A3B0C3}
+.tile-ico{background:linear-gradient(145deg,#152544,#253C60);color:#E4B55E}
+.tile-title{color:#152544}
+.section-title{color:#152544}
+.card,.client-card{background:#FFFFFF;border-color:var(--line)}
+.stripe{background:#D6A44F}
+.btn{background:linear-gradient(125deg,#E7BC70 0%,#D6A44F 60%,#C99539 100%);border:1px solid #BE8A2F;color:#171F35;font-weight:790;box-shadow:0 2px 7px #99712C18}
+.btn:hover{filter:brightness(1.025)}
+.btn.outline{background:#fff;color:#20385C;border-color:#BCC9DA;box-shadow:none}
+.btn.danger{background:#AF4750;color:white;border-color:#AF4750}
+.pill,.top-pill{background:#EAF0F7;color:#263D61}
+.label{color:#344F70}
+.field{background:#fff;border-color:#C6CFDE;color:#192A44}
+.field:focus{border-color:#D6A44F;outline:2px solid #EBD4A3}
+.notice{background:#E9EFF7;color:#2D496D}
+.notice.good{background:var(--goodbg);color:var(--green)}
+.notice.warn{background:var(--redbg);color:var(--red)}
+.day.free{background:#E1F3E7;color:var(--green)}
+.day.full{background:#F8E2E4;color:var(--red)}
+.day.off{background:#E9EBEF;color:#687789}
+.day.active{border-color:#B78A45;box-shadow:inset 0 0 0 1px #B78A45}
+.day b{color:#182945}
+.timeline-hour{background:#fff;border-color:#D6DCE7;color:#172949}
+.timeline-hour:hover,.timeline-hour:active{background:#F3F2EF}
+.hour-label{color:#192E4E}
+.hour-add{color:#9A742F}
+.timeline-visit{background:#E9EFF7;border-left-color:#345783;border-bottom-color:#C7D4E5}
+.timeline-visit-head .strong{color:#1D3556}
+.timeline-block{background:#F0F1F5;border-left-color:#8A9BB6;border-bottom-color:#CDD4E0}
+.timeline-block .strong{color:#314A6D}
+.block-lock{background:#DDE4ED;color:#365376}
+.timeline-break{background:#F0F1F4;color:#697589}
+.timeline-break .hour-label{color:#566779}
+.booking-sheet{background:#F8F8F6}
+.sheet-header{background:#F6F5F2;border-color:#D1D8E4}
+.sheet-header h2{color:#1A3152}
+.sheet-close{background:#E6E9EF;color:#39516E}
+.sheet-footer{border-color:#CCD4DF}
+.sheet-handle{background:#D6A44F}
+.sheet-scroll .stepper{background:#F7F8F9;border-color:#C8D2DF}
+.stepper button{background:#E6EAF1;border-color:#BCCAD9;color:#1C3658}
+.time-direct{color:#172A49}
+.dur.active,.sms-tab.active,.min-option.active{background:#253C60;color:#FFF3DE;border-color:#253C60}
+.dur,.sms-tab,.min-option{color:#2A486E;border-color:#C9D2DF}
+.gap-time,.slot{background:#E4F5EA;color:#20673F;border-color:#C7E4D0}
+.slot.selected{background:#F7EDD8;color:#74541E;outline-color:#C99B45}
+.suggestions,.suggest{background:#fff}
+.hours-label input{accent-color:#314F76}
+.tag{background:#EAF0F5;border-color:#CFD9E4;color:#304E73}
+.sample{background:#F6F6F4;border-color:#B9C5D7;color:#172B49}
+.bottom-nav{background:#FFFFFF;border-top-color:#D5DCE7}
+.navbtn{color:#66778D}
+.navbtn.current{background:#152544;color:#F3D297}
+.navbtn.current b{color:#D6A44F}
+.security-toolbar{background:#E9EEF5;color:#334C6B}
+.security-toolbar button{border-color:#CBD5E2;color:#294464}
+.sec-shell{background:var(--ice);color:var(--ink)}
+.sec-header{background:linear-gradient(135deg,#080F25,#111D39 75%,#182D4D);border-radius:0 0 40% 40% / 0 0 8% 8%;padding:19px 12px 32px}
+.sec-brand-logo{display:block;width:min(305px,88vw);height:auto;margin:auto}
+.sec-kicker{font-size:10px;letter-spacing:1.6px;color:#D6A44F;margin-top:5px;text-transform:uppercase}
+.sec-content h2{color:#20385B}
+.sec-note{background:#E9EEF5;color:#3E5573}
+.sec-content .btn{color:#19243C}
+.sec-lock{font-size:28px}
+.footer,.test-tag,.offline-status{color:#66778C}
+@media(max-width:390px){
+ .hero{padding:11px 10px 39px}
+ .brand img.brand-logo{width:min(280px,88vw);height:auto}
+ .tile{min-height:124px}
+}
+
+
+/* LOWRI 1.0.1 · VISUAL PATCH ONLY.
+ * Exact approved brand artwork on a transparent background.
+ * Smaller, cleaner headers. Booking, SMS, security, DB and backups unchanged.
+ */
+.hero{
+  background:linear-gradient(180deg,#020920 0%,#020920 55%,#101E3C 100%);
+  padding:9px 14px 31px;
+  min-height:0;
+}
+.hero::after{background:#D6A44F;height:30px;bottom:-19px;opacity:.58}
+.hero::before{background:var(--ice);height:36px;bottom:-26px}
+.brand{justify-content:center;gap:0}
+.brand img.brand-logo{
+  display:block;width:min(211px,59vw);max-width:100%;height:auto;
+  object-fit:contain;border:0;border-radius:0;box-shadow:none;
+}
+.sec-header{
+  background:linear-gradient(180deg,#020920 0%,#020920 55%,#152544 100%);
+  padding:13px 12px 24px;
+  border-radius:0 0 40% 40% / 0 0 8% 8%;
+}
+.sec-brand-logo{
+  display:block;width:min(225px,65vw);height:auto;max-width:100%;
+  object-fit:contain;margin:0 auto;
+}
+.sec-kicker{margin-top:1px;font-size:10px;letter-spacing:1.2px}
+@media(max-width:390px){
+  .hero{padding:9px 12px 30px}
+  .brand img.brand-logo{width:min(204px,62vw)}
+  .sec-header{padding:11px 9px 23px}
+  .sec-brand-logo{width:min(214px,68vw)}
+}
