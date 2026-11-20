@@ -1,61 +1,32 @@
-WIZMERO 0.6 MOBILE BETA · KK & Felix
-==================================
+WIZMERO 0.7 MOBILE BETA — KK & FELIX
 
-CEL: przetestować tę samą aplikację na iPhonie i Androidzie,
-z identyfikacją wizualną Wariant D, terminami, klientami, SMS,
-godzinami pracy i kopią danych.
+NOWOŚCI
+1. Kalendarz: oś dnia z wolnymi przedziałami oraz zajętymi wizytami.
+2. Każda rezerwacja pokazuje pełny przedział: 12:30–13:00 Jan Nowak, 13:00–14:00 Ola.
+3. Edycja rezerwacji, przełożenie i odwołanie bezpośrednio z osi dnia.
+4. Przy tworzeniu/edycji, po wskazaniu godziny, początek i koniec można korygować co 5 minut.
+5. „Moi klienci” w formularzu: lista i wyszukiwanie, wybór osoby bez pamiętania nazwy.
+6. „Umów wizytę” obok „Edytuj” na karcie każdego klienta.
 
-ZAWARTOŚĆ
-- index.html, styles.css, app.js: aplikacja
-- manifest.webmanifest, sw.js: instalacja na telefonie i offline
-- assets/: ikony wariantu D
+WAŻNE: przed aktualizacją z 0.6 zrób szyfrowaną kopię danych na telefonie (Opcje).
+Aktualizacja działa na tej samej nazwie lokalnej bazy IndexedDB i nie powinna usuwać danych 0.6.
+Nie zmieniaj adresu strony na nową domenę, bo dane lokalne są powiązane z origin.
 
-PUBLIKACJA NA GITHUB PAGES (TESTY)
-1. Rozpakuj ZIP na komputerze.
-2. Na github.com utwórz NOWE, PUBLICZNE repozytorium, np. wizmero-beta-test.
-   Nie umieszczaj tu żadnych danych prawdziwych klientów!
-3. W repozytorium wybierz Add file > Upload files i prześlij
-   pliki i folder assets z rozpakowanej paczki. Ważne: index.html
-   ma leżeć w katalogu głównym repozytorium, nie w podfolderze.
-4. Settings > Pages > Build and deployment:
-   Source: Deploy from a branch; Branch: main; Folder: /(root), Save.
-5. Otwórz adres podany przez GitHub Pages, przykładowo:
-   https://TWOJ_LOGIN.github.io/wizmero-beta-test/
-   To jest wzór adresu, a nie opublikowany link do Wizmero.
-6. iPhone: Safari > otwórz adres > Udostępnij > Dodaj do ekranu początkowego.
-   Android: Chrome > otwórz adres > menu ⋮ > Zainstaluj aplikację
-   lub Dodaj do ekranu głównego.
-7. Odwiedź aplikację w sieci, później włącz tryb samolotowy
-   i sprawdź, czy kalendarz otwiera się offline.
+PUBLIKACJA NA ISTNIEJĄCYM REPOZYTORIUM
+1. Wejdź do repozytorium wizmero-beta-test na GitHubie.
+2. Add file > Upload files. Przeciągnij WSZYSTKIE pliki i katalog assets z tej paczki.
+3. Potwierdź nadpisanie istniejących plików (GitHub) i zapisz commit.
+4. Poczekaj na zielony status GitHub Pages w Actions.
+5. Otwórz ten sam adres https://kaborszkolenia-cell.github.io/wizmero-beta-test/
+6. Jeśli widać starą wersję, zamknij aplikację, otwórz ponownie online; w razie potrzeby zamknij ponownie po załadowaniu nowego Service Workera.
 
-WAŻNE GRANICE TEJ WERSJI
-- To wydanie testowe, tylko syntetyczne dane: Jan Nowak, Ola itd.
-- Każdy telefon ma ODRĘBNĄ bazę, bez synchronizacji.
-- Dane zapisują się lokalnie w IndexedDB przeglądarki/PWA.
-  Ich trwałość może zależeć od ustawień telefonu i usunięcia aplikacji.
-  Testujemy więc również kopię zapasową (Opcje).
-- Kopia .wzm jest szyfrowana AES-GCM z hasłem (PBKDF2).
-  Zapomnianego hasła nie da się odzyskać.
-- Ustawienia SMS są personalizowane; naciśnięcie "Otwórz Wiadomości"
-  próbuje otworzyć systemową aplikację SMS i przygotować treść.
-  Na niektórych telefonach może otworzyć sam numer lub nie zadziałać.
-  ZAPIS STATUSU "Wysłany" wymaga ręcznego potwierdzenia.
-- Nie wysyłaj SMS-ów na przykładowe numery!
-  Najpierw zmień numer klienta na swój, i tylko wtedy próbuj.
-- Zmiany wizyt powiadomionych klientom tworzą osobną wiadomość SMS.
-- Do zastosowania w prawdziwej firmie potrzebne są dalsze testy,
-  audyt RODO/bezpieczeństwa, obsługa migracji i twardy backup.
+TESTY
+- 25.11: Jan 12:30–13:00 oraz Ola 13:00–14:00.
+- Spróbuj rezerwacji 12:00–12:30 (OK), następnie 12:00–13:00 (kolizja).
+- Nowa wizyta 08:05–09:15 i kolejna 09:25–10:25.
+- Przycisk Moi klienci w formularzu; Umów wizytę z listy klientów.
+- Edytuj zapisany termin bez tworzenia drugiej rezerwacji.
+- Sprawdź trwałość danych po zamknięciu i ponownym otwarciu.
+- Sprawdź SMS tylko na własny numer.
 
-PIERWSZE TESTY
-A. Kalendarz -> 25.11.2026: Jan 12:30–13:00, Ola 13:00–14:00.
-   12:00 na 30 minut jest dostępne; 12:00 na 60 min koliduje.
-B. Rezerwacja: wybierz godzinę, potem czas, dane klienta.
-   Po wpisaniu '98765' numer telefonu podpowie Jana Nowaka.
-C. Zmiana godzin pracy: ustaw zajęty dzień jako wolny,
-   istniejąca wizyta nie powinna zniknąć.
-D. SMS: zmień szablon w Opcjach, potem Przypomnienia.
-E. Zrób szyfrowaną kopię .wzm i przywróć ją na tym samym telefonie.
-F. Sprawdź czy po zamknięciu i ponownym otwarciu aplikacji dane zostały.
-
-PROBLEM? Zachowaj zrzut ekranu i napisz, jaki telefon, system,
-przeglądarka i czynności prowadziły do błędu.
+TO JEST BETA: używaj tylko fikcyjnych klientów. PWA nie potwierdza wysłania SMS, tylko ręczne potwierdzenie.
