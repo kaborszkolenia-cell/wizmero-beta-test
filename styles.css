@@ -228,3 +228,91 @@ body.wz-modal-open{overflow:hidden;overscroll-behavior:none}
   .sec-header{padding:11px 9px 23px}
   .sec-brand-logo{width:min(214px,68vw)}
 }
+
+
+/* LOWRI 1.0.2 · complete Midnight / Navy / Slate / Amber / Ivory skin.
+   Contrast checked in mobile layout. Green and red remain reserved for semantic statuses. */
+:root{--navy:#080F25;--blue:#253C60;--accent:#D6A44F;--ice:#152544;--ink:#F4E9D5;--muted:#B5C3D7;--line:#445779;--shadow:0 4px 16px #050A1C28;background:#080F25}
+html,body{background:#080F25;color:var(--ink)}
+#app,.main{background:#152544;color:#F4E9D5}
+.hero{background:linear-gradient(170deg,#080F25 0%,#0E1832 60%,#182C4B 100%);padding:7px 14px 28px}
+.hero::before,.subhead:after{background:#152544}
+.hero::after{opacity:.48;height:28px}
+.brand img.brand-logo{width:min(200px,57vw)}
+.subhead{background:linear-gradient(115deg,#080F25,#152544 65%,#253C60);color:#F4E9D5}
+.subhead h2,.section-title,.strong,.tile-title,.client-card .strong{color:#F4E9D5}
+.card,.client-card,.tile,.timeline-gap,.booking-sheet,.sheet-header,.sheet-footer,.suggestions,.suggest,.picker-row,.min-card,.trust-card{background:#253C60;border-color:#4A5E81;color:#F4E9D5}
+.tile{box-shadow:0 4px 14px #050B2042}
+.tile:hover,.tile:active{background:#2D456C;border-color:#C19B51}
+.tile-ico{background:#152544;color:#E3B85D}
+.tile-desc,.muted,.tiny,.note,.footer,.test-tag,.offline-status,.min-description,.picker-row small{color:#C0CBE0}
+.label,.hours-label,.time-direct{color:#F4E9D5}
+.field,.textarea,.time-direct,.sheet-scroll .stepper{background:#1A2D4E;border-color:#5B6F90;color:#FFF5E4}
+.field::placeholder,.textarea::placeholder,.time-direct::placeholder{color:#BBC6D4;opacity:1}
+.field:focus{border-color:#E6BC6B;outline:2px solid #E0B86788}
+.sheet-header{background:#152544}
+.sheet-header h2,.sec-content h2{color:#F4E9D5}
+.sheet-footer{background:#152544;border-color:#445779}
+.sheet-close{background:#324B70;color:#F4E9D5}
+.sheet-handle{background:#D6A44F}
+.stepper button{background:#324D73;color:#F7E9CA;border-color:#647695}
+.btn{background:linear-gradient(125deg,#E8BE72,#D6A44F 65%,#C89437);color:#111C35;border-color:#C89437}
+.btn.outline{background:#182B4B;color:#F4E9D5;border-color:#78849A}
+.btn.outline:hover{background:#2D456C}
+.btn.danger{background:#B5444A;color:white;border-color:#B5444A}
+.pill,.top-pill,.tag{background:#324A70;color:#F1D39A;border-color:#526682}
+.notice{background:#314869;color:#F4E9D5}
+.notice.good{background:#173F34;color:#C5F5D7}
+.notice.warn{background:#5B2C39;color:#FFE0E1}
+.stripe,.visitrow .stripe{background:#D6A44F}
+.day.free{background:#204934;color:#D2F2DD}
+.day.full{background:#632F40;color:#FFE2E4}
+.day.off{background:#2C3C55;color:#BBC6D5}
+.day b,.day small{color:inherit}
+.day.active{border-color:#D6A44F;box-shadow:inset 0 0 0 1px #D6A44F}
+.timeline-hour,.timeline-break{background:#203454;color:#F4E9D5;border-color:#4F6080}
+.timeline-hour:hover,.timeline-hour:active{background:#294366}
+.hour-label{color:#F4E9D5}
+.hour-add{color:#E4B85D}
+.timeline-visit{background:#344B6E;border-left-color:#D6A44F;border-bottom-color:#516482;color:#F4E9D5}
+.timeline-visit-head .strong,.timeline-block .strong{color:#FFF1D4}
+.timeline-block{background:#2D3D56;border-left-color:#8297B6;border-bottom-color:#4F607D}
+.timeline-block .muted,.timeline-break .hour-label{color:#C6D1DF}
+.gap-time,.slot{background:#214C3A;color:#D2F3DF;border-color:#3E7157}
+.slot.selected{background:#5B4C32;color:#FFF1D8;outline-color:#E3B35D}
+.dur,.min-option,.sms-tab,.sms-filter{background:#1A2D4E;border:1px solid #647492;color:#F4E9D5}
+.dur.active,.min-option.active,.sms-tab.active,.sms-filter.active{background:#D6A44F;color:#152544;border-color:#D6A44F}
+.suggestions .suggest,.picker-row{background:#253C60;color:#F4E9D5;border-color:#526583}
+.suggestions .suggest:hover,.picker-row:hover{background:#344B6E}
+.sample,#sms-preview{background:#152544 !important;color:#FFF1D8;border-color:#60708C}
+.status,.check-dot{background:#1F553A;color:#D9F4E2}
+.bottom-nav{background:#101D37;border-color:#425574}
+.navbtn{color:#D0C9BB}
+.navbtn.current{background:#324765;color:#F5D08B}
+.navbtn.current b{color:#D6A44F}
+.security-toolbar{background:#1D3151;color:#F4E9D5;border-color:#445779}
+.security-toolbar button{background:#172A49;color:#F4E9D5;border-color:#657998}
+.hours-row{border-color:#4F6280}
+.hours-label input{accent-color:#D6A44F}
+.min-preview{background:#1D3151;color:#E6E1D9}
+.min-preview span{color:#E6E1D9}
+.sec-shell{background:#152544;color:#F4E9D5}
+.sec-header{background:linear-gradient(170deg,#080F25,#152544)}
+.sec-brand-logo{width:min(212px,62vw)}
+.sec-note{background:#253C60;color:#F4E9D5}
+.sec-kicker{color:#D6A44F}
+.sec-reset{color:#F0ADB7}
+.sms-summary-card,.hours-global-card{background:#233A5E !important}
+.sms-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:11px 0}
+.sms-filter{min-height:39px;border-radius:10px;font-size:12px;font-weight:740;padding:8px}
+.trust-card{padding-bottom:16px}
+.trust-card .note{margin:9px 0}
+.quick-unlock{margin:9px 0 16px}
+@media(max-width:390px){.hero{padding:7px 11px 27px}.brand img.brand-logo{width:min(185px,56vw)}.sec-brand-logo{width:min(195px,62vw)}}
+
+/* LOWRI 1.0.2 · convenient PIN, separate from encryption password */
+.pin-code{font-size:22px!important;letter-spacing:.55em;text-align:center;font-weight:750;font-variant-numeric:tabular-nums;max-width:290px;margin:3px auto 12px;display:block}
+#secure-form,#pin-form,#pin-settings-form{display:block}
+#pin-form .btn{margin-top:12px}
+#pin-settings-form .label{margin-top:10px}
+#pin-settings-form .field{margin-bottom:4px}

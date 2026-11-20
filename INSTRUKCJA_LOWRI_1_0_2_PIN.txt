@@ -1,0 +1,21 @@
+LOWRI 1.0.2 PIN SECURITY BETA · KK & Felix
+
+1. PRZED AKTUALIZACJĄ pobierz zaszyfrowaną kopię .wzm ze starej aplikacji i zachowaj jej hasło.
+2. Rozpakuj ZIP i wgraj ZAWARTOŚĆ folderu do istniejącego repozytorium GitHub Pages.
+3. NIE usuwaj starej PWA, nie czyść danych strony ani aplikacji.
+4. W Opcje → Bezpieczeństwo · PIN wprowadź pełne hasło główne (to, które odblokowuje bazę) oraz dwukrotnie wybrany PIN 4-cyfrowy.
+5. Od tej pory codzienne odblokowanie: PIN. Pełne hasło jest nadal ważne i może zastąpić PIN.
+6. Po pięciu błędnych PIN-ach system wyłącza PIN, ale NIE usuwa danych. Dostęp pozostaje przez hasło główne.
+7. Hasło do szyfrowanej kopii .wzm jest ustalane osobno i może być inne niż hasło główne do bazy.
+
+Nie jest to ochrona równoważna z hasłem: 4 cyfry mają tylko 10 000 kombinacji. Włącz tylko na prywatnym telefonie z blokadą ekranu. Dodatkowy lokalny klucz sprzętowo niezależny (nieeksportowalny WebCrypto CryptoKey) chroni kopię klucza, ale nie gwarantuje odporności na atak na odblokowany telefon lub stronę internetową.
+
+Zmiany w 1.0.2:
+- Wszystkie moduły w palecie LOWRI: Midnight #080F25, Navy #152544, Slate #253C60, Amber #D6A44F, Ivory #F4E9D5.
+- Mniejszy symbol klepsydry + L, oryginalna typografia.
+- Przypomnienia: wszystkie niewysłane wiadomości, filtr na jutro i wysłane.
+- Każde przełożenie lub odwołanie tworzy właściwy SMS (nawet bez wcześniejszego przypomnienia).
+- 4-cyfrowy PIN do codziennego odblokowywania, pełne hasło jako tryb awaryjny.
+- Zapis w tej samej szyfrowanej bazie danych, bez zmiany schematu, brak synchronizacji.
+
+Wersja testowa. Używaj fikcyjnych danych klientów do zaliczenia testów iPhone + Android, importu i eksportu oraz testów błędnego PIN-u.

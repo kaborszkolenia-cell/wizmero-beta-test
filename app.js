@@ -1,4 +1,4 @@
-/* LOWRI by KK & Felix · 1.0.1 SECURITY BETA · encrypted local-first */
+/* LOWRI by KK & Felix · 1.0.2 PIN SECURITY BETA · encrypted local-first */
 (()=>{
 'use strict';
 const root=document.getElementById('app');
@@ -13,10 +13,14 @@ const defaults=()=>({
  breaks:[],
  tasks:[]
 });
-const viewInitial=()=>({page:'home',date:'2026-11-25',week:'2026-11-23',smsDate:'2026-11-20',slot:null,moving:null,editBooking:null,prefillClientId:null,pickerOpen:false,pickerQuery:'',confirmCancel:null,form:{name:'',phone:'',duration:30,clientId:null,endTime:null},search:'',editId:null,editName:'',editPhone:'',addClient:false,allFrom:'08:00',allTo:'20:00',smsTab:'reminder',draftCompany:null,draftTemplates:null,compose:null,backupPass:'',restorePass:'',restoreFile:null,restoreVisible:false,notice:'',noticeBad:false,resetConfirm:false,modalDirty:false,breakOpen:false,breakEdit:null,breakStart:'',breakEnd:'',breakLabel:'',breakDirty:false,breakDelete:null});
+const todayLocal=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const viewInitial=()=>({page:'home',date:'2026-11-25',week:'2026-11-23',smsDate:todayLocal(),smsMode:'pending',slot:null,moving:null,editBooking:null,prefillClientId:null,pickerOpen:false,pickerQuery:'',confirmCancel:null,form:{name:'',phone:'',duration:30,clientId:null,endTime:null},search:'',editId:null,editName:'',editPhone:'',addClient:false,allFrom:'08:00',allTo:'20:00',smsTab:'reminder',draftCompany:null,draftTemplates:null,compose:null,backupPass:'',restorePass:'',restoreFile:null,restoreVisible:false,notice:'',noticeBad:false,resetConfirm:false,modalDirty:false,breakOpen:false,breakEdit:null,breakStart:'',breakEnd:'',breakLabel:'',breakDirty:false,breakDelete:null});
 let state=defaults(),v=viewInitial(),db=null,storageOK=false,saveQueue=Promise.resolve();
 // Secure local storage. No password, PIN, or encryption key is stored on the server.
 const SECURE_FORMAT='kfx-local-encrypted-v1', SECURE_ITERATIONS=430000;
+const PIN_RECORD='lowri-pin-device-v1', OLD_TRUST_RECORD='lowri-trusted-device-7d';
+const PIN_ITERATIONS=390000, PIN_MAX_ATTEMPTS=5;
+let pinConfigured=false, pinAttempts=0, pinPasswordFallback=false, pinBusy=false;
 let securityMode='loading'; // setup | migrate | unlock | ready | unavailable
 let storageKey=null, encryptedRecord=null, securityError='',lastActivity=Date.now();
 const txtToBytes=v=>new TextEncoder().encode(v);
@@ -29,22 +33,73 @@ async function sealState(data,key,salt){
  const enc=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,txtToBytes(JSON.stringify(data)));
  return {format:SECURE_FORMAT,version:1,iterations:SECURE_ITERATIONS,salt:base64(salt),iv:base64(iv),ciphertext:base64(enc)};
 }
-async function openSealed(record,pass){
- const derived=await passwordKey(pass,unbase64(record.salt));
- const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:unbase64(record.iv)},derived,unbase64(record.ciphertext));
+async function openSealedWithKey(record,key){
+ const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:unbase64(record.iv)},key,unbase64(record.ciphertext));
  const restored=JSON.parse(new TextDecoder().decode(bytes));
  if(!validData(restored))throw new Error('Niepoprawne dane w szyfrowanej bazie');
- return {data:normalizeState(restored),key:derived};
+ return {data:normalizeState(restored),key};
+}
+async function openSealed(record,pass){
+ return openSealedWithKey(record,await passwordKey(pass,unbase64(record.salt)));
+}
+// 4-digit PIN: unlocks a separate AES-GCM-wrapped copy of the derived data key.
+// The master password is NEVER stored. The PIN is NOT saved in plaintext or hash.
+// A browser-stored non-extractable device CryptoKey adds a local second encryption layer.
+// Nevertheless a 4-digit PIN is weaker than a strong password; use screen-lock.
+function readLocalRecord(key){return new Promise((resolve,reject)=>{const tx=db.transaction('records','readonly');const req=tx.objectStore('records').get(key);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+function writeLocalRecord(key,value){return new Promise((resolve,reject)=>{const tx=db.transaction('records','readwrite');if(value===null)tx.objectStore('records').delete(key);else tx.objectStore('records').put(value,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}
+async function refreshPin(){const p=await readLocalRecord(PIN_RECORD);pinConfigured=!!(p&&p.format==='lowri-pin-wrap-v1'&&p.deviceKey&&p.ciphertext);pinAttempts=pinConfigured?Number(p.attempts||0):0;return p}
+async function derivePinKey(pin,salt){const seed=await crypto.subtle.importKey('raw',txtToBytes(pin),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',hash:'SHA-256',salt,iterations:PIN_ITERATIONS},seed,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function rawMasterKey(password,salt){const seed=await crypto.subtle.importKey('raw',txtToBytes(password),'PBKDF2',false,['deriveBits']);return new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt,iterations:SECURE_ITERATIONS},seed,256))}
+async function enablePin(master,pin,repeat){
+ if(securityMode!=='ready'||!storageOK||!storageKey)throw Error('Odblokuj bazę silnym hasłem.');
+ if(!/^\d{4}$/.test(pin)||pin!==repeat)throw Error('PIN musi mieć cztery cyfry i być powtórzony identycznie.');
+ await saveQueue;
+ const raw=await rawMasterKey(master,unbase64(encryptedRecord.salt));
+ try{
+  const verify=await crypto.subtle.importKey('raw',raw,{name:'AES-GCM'},false,['encrypt','decrypt']);
+  await openSealedWithKey(encryptedRecord,verify);
+  const pinSalt=crypto.getRandomValues(new Uint8Array(16)),pinIv=crypto.getRandomValues(new Uint8Array(12));
+  const pinKey=await derivePinKey(pin,pinSalt);
+  const inner=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv:pinIv},pinKey,raw));
+  const deviceKey=await crypto.subtle.generateKey({name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+  const deviceIv=crypto.getRandomValues(new Uint8Array(12));
+  const wrapped=await crypto.subtle.encrypt({name:'AES-GCM',iv:deviceIv},deviceKey,inner);
+  await writeLocalRecord(PIN_RECORD,{format:'lowri-pin-wrap-v1',version:1,deviceKey,deviceIv:base64(deviceIv),pinSalt:base64(pinSalt),pinIv:base64(pinIv),ciphertext:base64(wrapped),attempts:0});
+  pinConfigured=true;pinAttempts=0;
+ }finally{raw.fill(0)}
+}
+async function disablePin(){await writeLocalRecord(PIN_RECORD,null);pinConfigured=false;pinAttempts=0;pinPasswordFallback=false}
+async function unlockWithPin(pin){
+ if(!/^\d{4}$/.test(pin))throw Error('Wpisz 4 cyfry PIN-u.');
+ const rec=await refreshPin();
+ if(!pinConfigured)throw Error('PIN jest wyłączony. Użyj hasła.');
+ if(pinAttempts>=PIN_MAX_ATTEMPTS){await disablePin();throw Error('Przekroczono limit prób. Użyj pełnego hasła.');}
+ let raw=null;
+ try{
+  const pinKey=await derivePinKey(pin,unbase64(rec.pinSalt));
+  const inner=await crypto.subtle.decrypt({name:'AES-GCM',iv:unbase64(rec.deviceIv)},rec.deviceKey,unbase64(rec.ciphertext));
+  raw=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:unbase64(rec.pinIv)},pinKey,inner));
+  const key=await crypto.subtle.importKey('raw',raw,{name:'AES-GCM'},false,['encrypt','decrypt']);
+  const result=await openSealedWithKey(encryptedRecord,key);
+  await writeLocalRecord(PIN_RECORD,{...rec,attempts:0});
+  pinAttempts=0;state=result.data;storageKey=result.key;securityMode='ready';securityError='';pinPasswordFallback=false;v=viewInitial();lastActivity=Date.now();render();
+ }catch(err){
+  const attempts=(Number(rec.attempts)||0)+1;pinAttempts=attempts;
+  if(attempts>=PIN_MAX_ATTEMPTS){await disablePin();throw Error('5 błędnych prób. PIN został wyłączony, dane zachowane. Odblokuj hasłem.');}
+  await writeLocalRecord(PIN_RECORD,{...rec,attempts});
+  throw Error('Błędny PIN. Pozostało prób: '+(PIN_MAX_ATTEMPTS-attempts)+'.');
+ }finally{if(raw)raw.fill(0)}
 }
 function securityView(){
- const setup=securityMode==='setup'||securityMode==='migrate';
- const locked=securityMode==='unlock';
+ const setup=securityMode==='setup'||securityMode==='migrate',locked=securityMode==='unlock';
+ const showPin=locked&&pinConfigured&&!pinPasswordFallback;
  const title=securityMode==='migrate'?'Zabezpiecz dotychczasowe dane':setup?'Włącz szyfrowanie danych':locked?'Odblokuj LOWRI':'Magazyn danych niedostępny';
- root.innerHTML=`<div class="sec-shell"><div class="sec-header"><img class="sec-brand-logo" src="./assets/lowri-logo-transparent.png" alt="LOWRI · Twój czas. Twoi klienci. by KK & Felix"><div class="sec-kicker">LOWRI · SECURITY BETA 1.0.1</div></div><div class="sec-content"><div class="sec-lock">🔐</div><h2>${title}</h2>${securityError?`<div class="notice warn" role="alert">${escapeHTML(securityError)}</div>`:''}
- ${securityMode==='unavailable'?'<p>Nie można uruchomić bezpiecznego magazynu. Sprawdź HTTPS, uprawnienia przeglądarki i dostępne miejsce.</p>':`<form id="secure-form" autocomplete="off"><label class="label" for="sec-pass">${setup?'Ustal hasło do lokalnej bazy (min. 12 znaków)':'Hasło do lokalnej bazy'}</label><input class="field" type="password" id="sec-pass" name="password" minlength="${setup?12:1}" required autocomplete="off" placeholder="Hasło, którego nie zapomnisz" />${setup?'<label class="label" for="sec-confirm">Powtórz hasło</label><input class="field" type="password" id="sec-confirm" name="confirm" minlength="12" required autocomplete="off" />':''}<button class="btn full" type="submit">${setup?'Zaszyfruj i rozpocznij':'Odblokuj'}</button></form>`}
- ${setup?'<div class="sec-note">Hasło szyfruje wszystkie dane klientów i wizyt w tej przeglądarce. Nie przechowujemy go ani nie odzyskamy go za Ciebie. Zrób osobną zaszyfrowaną kopię.</div>':''}
- ${locked?'<div class="sec-note">Nie pamiętasz hasła? Dane można odzyskać wyłącznie z wcześniejszej kopii .wzm i jej hasła. Nie resetuj magazynu, jeśli nie masz sprawdzonej kopii.</div><button class="sec-reset" data-security="wipe">Usuń niedostępną bazę i rozpocznij od nowa</button>':''}
- <div class="sec-note">🔒 Dane pozostają na tym urządzeniu. Nie są synchronizowane między telefonami. Beta: na razie tylko dane testowe.</div></div></div>`;
+ root.innerHTML=`<div class="sec-shell"><div class="sec-header"><img class="sec-brand-logo" src="./assets/lowri-logo-transparent.png" alt="LOWRI · Twój czas. Twoi klienci. by KK & Felix"><div class="sec-kicker">LOWRI · SECURITY BETA 1.0.2 PIN</div></div><div class="sec-content"><div class="sec-lock">🔐</div><h2>${title}</h2>${securityError?`<div class="notice warn" role="alert">${escapeHTML(securityError)}</div>`:''}
+ ${securityMode==='unavailable'?'<p>Nie można uruchomić bezpiecznego magazynu. Sprawdź HTTPS, uprawnienia przeglądarki i dostępne miejsce.</p>':showPin?`<form id="pin-form" autocomplete="off"><label class="label" for="sec-pin">PIN do codziennego otwierania</label><input class="field pin-code" type="password" id="sec-pin" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required placeholder="••••"><button class="btn full" type="submit">Otwórz LOWRI</button></form><button type="button" class="sec-reset" data-security="password-mode">Użyj hasła głównego zamiast PIN-u</button>`:`<form id="secure-form" autocomplete="off"><label class="label" for="sec-pass">${setup?'Ustal hasło do lokalnej bazy (min. 12 znaków)':'Hasło główne do lokalnej bazy'}</label><input class="field" type="password" id="sec-pass" minlength="${setup?12:1}" required autocomplete="off" placeholder="Hasło główne" />${setup?'<label class="label" for="sec-confirm">Powtórz hasło</label><input class="field" type="password" id="sec-confirm" minlength="12" required autocomplete="off" />':''}<button class="btn full" type="submit">${setup?'Zaszyfruj i rozpocznij':'Odblokuj hasłem'}</button></form>${locked&&pinConfigured?'<button type="button" class="sec-reset" data-security="pin-mode">Wróć do PIN-u</button>':''}`}
+ ${setup?'<div class="sec-note">Hasło szyfruje lokalne dane i umożliwia ich odblokowanie. Ustawienie PIN-u będzie dostępne w Opcjach. Hasło kopii .wzm ustalasz osobno; zachowaj je w bezpiecznym miejscu.</div>':''}
+ ${locked?'<div class="sec-note">Nie pamiętasz PIN-u? Możesz użyć hasła głównego. Po 5 błędnych próbach PIN zostanie wyłączony, lecz dane pozostaną zaszyfrowane.</div><button class="sec-reset" data-security="wipe">Usuń niedostępną bazę i rozpocznij od nowa</button>':''}
+ <div class="sec-note">🔒 Każdy telefon ma własną lokalną bazę. Brak synchronizacji. Beta: na razie wyłącznie dane testowe.</div></div></div>`;
  document.body.classList.remove('wz-modal-open');
 }
 async function unlockWithPassword(pass){
@@ -59,30 +114,52 @@ async function setupWithPassword(pass){
  await writeDB(sealed); // On migration overwrite plaintext only after successful encryption and storage.
  encryptedRecord=sealed;storageKey=key;securityMode='ready';securityError='';v=viewInitial();lastActivity=Date.now();render();
 }
-async function lockNow(){
+async function lockNow(manual=false){
  await saveQueue;
  if(!storageOK){securityError='Ostatni zapis mógł się nie udać. Nie zamykaj programu bez kopii.';render();return}
+ // Ręczne zablokowanie zachowuje skonfigurowany PIN na zaufanym telefonie.
  state=defaults();v=viewInitial();storageKey=null;securityMode='unlock';securityError='';render();
 }
 // Avoid leaving an unlocked calendar unattended; 10 min inactivity.
 ['pointerdown','keydown','touchstart'].forEach(type=>document.addEventListener(type,()=>{if(securityMode==='ready')lastActivity=Date.now()},{passive:true}));
 setInterval(()=>{if(securityMode==='ready'&&Date.now()-lastActivity>10*60*1000)lockNow().catch(console.warn)},30000);
 root.addEventListener('submit',async e=>{
- if(e.target.id!=='secure-form')return;
- e.preventDefault();if(securityMode!=='setup'&&securityMode!=='migrate'&&securityMode!=='unlock')return;
- const pass=root.querySelector('#sec-pass')?.value||'';
- const confirm=root.querySelector('#sec-confirm')?.value||'';
- if(securityMode!=='unlock'&&pass!==confirm){securityError='Hasła nie są identyczne.';securityView();return}
- try{securityError='';if(securityMode==='unlock')await unlockWithPassword(pass);else await setupWithPassword(pass)}
- catch(e){securityError=securityMode==='unlock'?'Nie udało się odblokować. Sprawdź hasło.':'Nie udało się zaszyfrować bazy. Sprawdź wolne miejsce i spróbuj ponownie.';console.warn('Secure local storage',e);securityView()}
+ const formId=e.target.id;
+ if(!['secure-form','pin-form','pin-settings-form'].includes(formId))return;
+ e.preventDefault();if(pinBusy)return;pinBusy=true;
+ try{
+  if(formId==='pin-settings-form'&&securityMode==='ready'){
+   const master=root.querySelector('#pin-master')?.value||'';
+   const pin=root.querySelector('#pin-new')?.value||'';
+   const confirm=root.querySelector('#pin-repeat')?.value||'';
+   try{await enablePin(master,pin,confirm);notice('PIN 4-cyfrowy włączony. Hasło główne pozostaje potrzebne do awaryjnego dostępu i odzyskania danych.');render()}
+   catch(err){notice(err.name==='OperationError'?'Nieprawidłowe hasło główne.':err.message||'Nie udało się włączyć PIN-u.',true);render()}
+  }else if(formId==='pin-form'&&securityMode==='unlock'){
+   try{securityError='';await unlockWithPin(root.querySelector('#sec-pin')?.value||'')}
+   catch(err){securityError=err.message||'Nie udało się odblokować PIN-em.';console.warn('PIN unlock failed');securityView()}
+  }else if(formId==='secure-form'&&['setup','migrate','unlock'].includes(securityMode)){
+   const pass=root.querySelector('#sec-pass')?.value||'';
+   const confirm=root.querySelector('#sec-confirm')?.value||'';
+   if(securityMode!=='unlock'&&pass!==confirm){securityError='Hasła nie są identyczne.';securityView();return}
+   try{securityError='';if(securityMode==='unlock')await unlockWithPassword(pass);else await setupWithPassword(pass)}
+   catch(err){securityError=securityMode==='unlock'?'Nie udało się odblokować. Sprawdź hasło.':'Nie udało się zaszyfrować bazy.';console.warn('Secure local storage',err);securityView()}
+  }
+ }finally{pinBusy=false}
 });
 root.addEventListener('click',async e=>{
  const button=e.target.closest('[data-security]');if(!button)return;
- if(button.dataset.security==='lock'&&securityMode==='ready')await lockNow();
- else if(button.dataset.security==='wipe'&&securityMode==='unlock'){
+ const action=button.dataset.security;
+ if(action==='lock'&&securityMode==='ready')await lockNow(true);
+ else if(action==='password-mode'&&securityMode==='unlock'){pinPasswordFallback=true;securityError='';securityView()}
+ else if(action==='pin-mode'&&securityMode==='unlock'){pinPasswordFallback=false;securityError='';securityView()}
+ else if(action==='pin-off'&&securityMode==='ready'){
+  if(!window.confirm('Wyłączyć szybki PIN? Hasło główne i zaszyfrowane dane pozostaną bez zmian.'))return;
+  try{await disablePin();notice('PIN wyłączony. Do odblokowania użyj hasła głównego.');render()}catch(err){notice('Nie udało się wyłączyć PIN-u.',true);render()}
+ }
+ else if(action==='wipe'&&securityMode==='unlock'){
   if(!window.confirm('UWAGA: utracisz CAŁĄ bazę na tym urządzeniu. Czy masz kopię danych?'))return;
   if(!window.confirm('Ostateczne potwierdzenie: usunąć nieodwracalnie zaszyfrowaną bazę lokalną?'))return;
-  try{await writeDB(null);encryptedRecord=null;state=defaults();securityMode='setup';securityError='';securityView()}catch(e){securityError='Nie udało się wyczyścić bazy.';securityView()}
+  try{await writeDB(null);await disablePin();await writeLocalRecord(OLD_TRUST_RECORD,null);encryptedRecord=null;state=defaults();securityMode='setup';securityError='';securityView()}catch(err){securityError='Nie udało się wyczyścić bazy.';securityView()}
  }
 });
 
@@ -149,7 +226,7 @@ function iconSvg(name){const p={cal:'<rect x="3" y="5" width="18" height="16" rx
 function header(){if(v.page==='home')return `<header class="hero"><div class="brand"><img class="brand-logo" src="./assets/lowri-logo-transparent.png" alt="LOWRI · Twój czas. Twoi klienci. by KK & Felix"></div></header>`;const t={calendar:['Mój terminarz','cal'],clients:['Moi klienci','users'],sms:['Przypomnienia','sms'],settings:['Opcje','settings']}[v.page];return `<header class="subhead"><button class="go-home" data-a="home" aria-label="Ekran główny">‹</button>${iconSvg(t[1])}<h2>${t[0]}</h2></header>`}
 function bottomNav(){return `<nav class="bottom-nav" aria-label="Moduły terminarza">${[['calendar','▦','Terminarz'],['clients','♧','Klienci'],['sms','▤','SMS'],['settings','⚙','Opcje']].map(([key,ico,label])=>`<button class="navbtn ${key===v.page?'current':''}" data-a="page" data-page="${key}"><b>${ico}</b><span>${label}</span></button>`).join('')}</nav>`}
 function visitView(b){return `<div class="visitrow"><div class="stripe"></div><div class="grow"><div class="strong">${escapeHTML(findClient(b.clientId)?.name||'Klient')}</div><div class="muted">${span(b)} · ${b.duration} min</div></div><div class="check-dot">✓</div></div>`}
-function home(){const list=onDay(v.date);return `<section class="tiles">${[['calendar','cal','Mój terminarz','Wizyty i rezerwacje'],['clients','users','Moi klienci','Kontakty i historia'],['sms','sms','Przypomnienia','SMS-y do wysłania'],['settings','settings','Opcje','Godziny i ustawienia']].map(([key,ico,label,desc])=>`<button class="tile" data-a="page" data-page="${key}"><span class="tile-ico">${iconSvg(ico)}</span><span class="tile-title">${label}<span>›</span></span><span class="tile-desc">${desc}</span></button>`).join('')}</section><div class="row preview-title"><div class="row-start">${iconSvg('cal')}<h2 class="section-title">Podgląd terminarza</h2></div><button class="pill" data-a="preview">▣ ${plDate(v.date).slice(0,5)}</button></div><div class="card">${list.length?list.map(visitView).join(''):'<div class="empty">Na ten dzień nie ma jeszcze wizyt.</div>'}</div><button class="btn full" data-a="new-visit">＋ Dodaj wizytę</button><p class="test-tag">LOWRI 1.0.1 SECURITY BETA · Dane testowe</p>`}
+function home(){const list=onDay(v.date);return `<section class="tiles">${[['calendar','cal','Mój terminarz','Wizyty i rezerwacje'],['clients','users','Moi klienci','Kontakty i historia'],['sms','sms','Przypomnienia','SMS-y do wysłania'],['settings','settings','Opcje','Godziny i ustawienia']].map(([key,ico,label,desc])=>`<button class="tile" data-a="page" data-page="${key}"><span class="tile-ico">${iconSvg(ico)}</span><span class="tile-title">${label}<span>›</span></span><span class="tile-desc">${desc}</span></button>`).join('')}</section><div class="row preview-title"><div class="row-start">${iconSvg('cal')}<h2 class="section-title">Podgląd terminarza</h2></div><button class="pill" data-a="preview">▣ ${plDate(v.date).slice(0,5)}</button></div><div class="card">${list.length?list.map(visitView).join(''):'<div class="empty">Na ten dzień nie ma jeszcze wizyt.</div>'}</div><button class="btn full" data-a="new-visit">＋ Dodaj wizytę</button><p class="test-tag">LOWRI 1.0.2 PIN SECURITY BETA · Dane testowe</p>`}
 function freeGapHTML(a,z,moving){
  if(z-a<5)return '';
  // A 5-minute gap is not automatically a bookable visit: we require one uninterrupted
@@ -273,13 +350,33 @@ function messageValues(b){return {firma:state.company||'Zakład',klient:findClie
 function reminderMessage(b){return textTemplate(state.templates.reminder,messageValues(b))}
 function taskMessage(t){return textTemplate(state.templates[t.type],{firma:state.company||'Zakład',klient:t.name,data:plDate(t.date),godzina:t.time,stara_data:plDate(t.oldDate||t.date),stara_godzina:t.oldTime||t.time})}
 function smsDraftBox(text,phone,id,type){const uri='sms:'+encodeURIComponent(phone.startsWith('+')?phone:'+48'+number(phone))+'?body='+encodeURIComponent(text);return `<div class="notice"><b>Przygotowany SMS</b><div class="sample" style="margin:9px 0;background:white">${escapeHTML(text)}</div><div class="tiny">Numer: ${escapeHTML(phone)} · ${text.length} znaków</div><div class="actions"><button class="btn outline small" data-a="copy-sms" data-type="${type}" data-id="${id}">Kopiuj</button><a class="btn small" style="display:inline-flex;align-items:center;text-decoration:none" href="${escapeHTML(uri)}">Otwórz Wiadomości</a></div><div class="notice warn"><b>Uwaga:</b> otwarcie Wiadomości nie oznacza wysłania. Po powrocie potwierdź ręcznie tylko wtedy, gdy SMS rzeczywiście został wysłany.</div><div class="actions"><button class="btn outline small" data-a="close-draft">Nie wysłano</button><button class="btn small" data-a="confirm-${type}" data-id="${id}">Potwierdź wysłanie</button></div></div>`}
-function sms(){const xs=onDay(v.smsDate),tasks=state.tasks.filter(t=>t.status!=='discarded');return `<div class="notice">Lista wiadomości na wybrany dzień. Testuj wysyłanie wyłącznie na własnym numerze telefonu! W razie potrzeby najpierw zmień numer w bazie testowej.</div><label class="label">Data wizyt</label><input class="field" type="date" id="sms-date" value="${v.smsDate}"><div class="card" style="background:#e9f3fd"><div class="cols2"><div><div class="muted">Do wysłania</div><strong style="font-size:28px">${xs.filter(b=>b.reminder!=='sent').length}</strong></div><div><div class="muted">Potwierdzone</div><strong style="font-size:28px">${xs.filter(b=>b.reminder==='sent').length}</strong></div></div></div>${xs.length?xs.map(b=>`<div class="card"><div class="row"><div class="grow"><div class="strong">${escapeHTML(findClient(b.clientId)?.name)}</div><div class="muted">${span(b)} · ${escapeHTML(findClient(b.clientId)?.phone)}</div></div>${b.reminder==='sent'?'<span class="status">✓ Wysłany</span>':`<button class="btn small" data-a="draft" data-type="reminder" data-id="${b.id}">Wyślij</button>`}</div>${v.compose?.type==='reminder'&&v.compose.id===b.id?smsDraftBox(reminderMessage(b),findClient(b.clientId).phone,b.id,'reminder'):''}</div>`).join(''):'<div class="empty">Brak rezerwacji w wybranym dniu.</div>'}<h3 class="section-title" style="margin-top:22px">Zmiany i odwołania (${tasks.filter(t=>t.status==='ready').length})</h3>${tasks.length?tasks.map(t=>`<div class="card"><div class="row"><div class="grow"><div class="strong">${t.type==='change'?'Zmiana terminu':'Odwołanie wizyty'}</div><div class="muted">${escapeHTML(t.name)} · ${escapeHTML(t.phone)}</div><div class="tiny">${plDate(t.date)} · ${t.time}</div></div>${t.status==='sent'?'<span class="status">✓ Wysłany</span>':`<button class="btn small" data-a="draft" data-type="task" data-id="${t.id}">Wyślij</button>`}</div>${v.compose?.type==='task'&&v.compose.id===t.id?smsDraftBox(taskMessage(t),t.phone,t.id,'task'):''}</div>`).join(''):'<div class="empty">Brak wiadomości o zmianach i odwołaniach.</div>'}<div class="notice">LOWRI nie wysyła SMS-ów automatycznie. PWA otwiera aplikację SMS, a status oznaczasz ręcznie. Nie jest to potwierdzenie doręczenia.</div>`}
+function sms(){
+ const mode=v.smsMode||'pending',tomorrow=dateAdd(todayLocal(),1),tasks=state.tasks.filter(t=>t.status!=='discarded');
+ let xs=state.bookings.filter(b=>mode==='sent'?b.reminder==='sent':mode==='pending'?b.reminder!=='sent':mode==='tomorrow'?b.date===tomorrow:b.date===v.smsDate);
+ xs=xs.sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+ const messages=tasks.filter(t=>mode==='sent'?t.status==='sent':t.status==='ready').sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+ const title=mode==='pending'?'Wszystkie oczekujące':mode==='tomorrow'?'Wizyty na jutro ('+plDate(tomorrow)+')':mode==='sent'?'Wysłane wiadomości':'Wizyty '+plDate(v.smsDate);
+ return `<div class="notice">LOWRI przygotowuje wiadomości, lecz nie wysyła ich bez kliknięcia w aplikacji SMS. Testuj na własnym numerze.</div>
+ <div class="sms-filters" role="group" aria-label="Filtruj przypomnienia">
+ ${[['pending','Do wysłania'],['tomorrow','Na jutro'],['date','Wybierz datę'],['sent','Wysłane']].map(([k,t])=>`<button class="sms-filter ${mode===k?'active':''}" type="button" data-a="sms-filter" data-mode="${k}" aria-pressed="${mode===k}">${t}</button>`).join('')}
+ </div>
+ ${mode==='date'?`<label class="label" for="sms-date">Data wizyt</label><input class="field" type="date" id="sms-date" value="${v.smsDate}">`:''}
+ <div class="card sms-summary-card"><div class="strong">${title}</div><div class="cols2" style="margin-top:7px"><div><div class="muted">Przypomnienia</div><strong style="font-size:27px">${xs.length}</strong></div><div><div class="muted">Zmiany i odwołania</div><strong style="font-size:27px">${messages.length}</strong></div></div></div>
+ <h3 class="section-title" style="margin-top:16px">Zmiany i odwołania (${messages.length})</h3>
+ ${messages.length?messages.map(t=>`<div class="card"><div class="row"><div class="grow"><div class="strong">${t.type==='change'?'Zmiana terminu':'Odwołanie wizyty'}</div><div class="muted">${escapeHTML(t.name)} · ${escapeHTML(t.phone)}</div><div class="tiny">${plDate(t.date)} · ${t.time}</div></div>${t.status==='sent'?'<span class="status">✓ Wysłany</span>':`<button class="btn small" data-a="draft" data-type="task" data-id="${t.id}">Wyślij</button>`}</div>${v.compose?.type==='task'&&v.compose.id===t.id?smsDraftBox(taskMessage(t),t.phone,t.id,'task'):''}</div>`).join(''):'<div class="empty">Brak wiadomości o zmianach i odwołaniach w tym widoku.</div>'}
+ <h3 class="section-title" style="margin-top:22px">Przypomnienia (${xs.length})</h3>
+ ${xs.length?xs.map(b=>{const c=findClient(b.clientId);return `<div class="card"><div class="row"><div class="grow"><div class="strong">${escapeHTML(c?.name||'Klient')}</div><div class="muted">${plDate(b.date)} · ${span(b)}</div><div class="tiny">${escapeHTML(c?.phone||'')}</div></div>${b.reminder==='sent'?'<span class="status">✓ Wysłany</span>':`<button class="btn small" data-a="draft" data-type="reminder" data-id="${b.id}">Wyślij</button>`}</div>${v.compose?.type==='reminder'&&v.compose.id===b.id?smsDraftBox(reminderMessage(b),c?.phone||'',b.id,'reminder'):''}</div>`}).join(''):'<div class="empty">Brak przypomnień w tym widoku.</div>'}
+ <div class="notice">Przypomnienia przygotowujesz ręcznie. Zalecamy wysyłkę dzień przed wizytą. Status „Wysłany” jest ręczny, nie potwierdza dostarczenia.</div>`;
+}
 function timeSelect(value,key,index){let options='';for(let i=360;i<=1320;i+=15){const t=hhmm(i);options+=`<option value="${t}" ${t===value?'selected':''}>${t}</option>`}return `<select class="field" data-c="${key}" ${index===null?'':`data-i="${index}"`}>${options}</select>`}
 function smsSample(){const values={firma:v.draftCompany.trim()||'Twój zakład',klient:'Anna Kowalska',data:'20.11.2026',godzina:'09:00',stara_data:'19.11.2026',stara_godzina:'10:00'};return textTemplate(v.draftTemplates[v.smsTab],values)}
 function settings(){const invalid=state.bookings.filter(b=>{const h=state.hours[dayIndex(b.date)];return !validWork(h)||minutes(b.time)<minutes(h.from)||minutes(b.time)+b.duration>minutes(h.to)}).length;
-return `<h3 class="section-title">Godziny pracy</h3><div class="card" style="background:#eaf4fd"><div class="strong">Jednakowe godziny dla całego tygodnia</div><div class="cols2"><div><label class="label">Od</label>${timeSelect(v.allFrom,'all-from',null)}</div><div><label class="label">Do</label>${timeSelect(v.allTo,'all-to',null)}</div></div><button class="btn full" style="margin-top:11px" data-a="apply-all" ${v.allFrom>=v.allTo?'disabled':''}>Ustaw na wszystkie dni</button></div><h4 style="font-size:14px;margin:20px 0 6px">Lub ustaw każdy dzień osobno</h4><div class="card">${state.hours.map((h,i)=>`<div class="hours-row"><label class="hours-label"><input type="checkbox" data-c="toggle-day" data-i="${i}" ${h.on?'checked':''}>${names[i]}</label>${h.on?`<div class="hours-fields">${timeSelect(h.from,'from',i)}<span>–</span>${timeSelect(h.to,'to',i)}</div>`:'<span class="muted">Dzień wolny</span>'}</div>${h.on&&h.from>=h.to?'<div class="tiny danger-text">Nieprawidłowe godziny pracy.</div>':''}`).join('')}</div>${invalid?`<div class="notice warn">${invalid} zapisanych wizyt wypada poza godzinami pracy. Nie usuwamy ich automatycznie.</div>`:''}<div class="divider"></div><h3 class="section-title">Minimalny czas wizyty</h3><p class="note">Najkrótszy nieprzerwany wolny przedział, który aplikacja zaproponuje do nowej rezerwacji.</p><div class="card min-card"><div class="min-choices" role="group" aria-label="Minimalny czas nowej wizyty">${minOptions.map(n=>`<button type="button" class="min-option ${minBooking()===n?'active':''}" data-a="min-booking" data-n="${n}" aria-pressed="${minBooking()===n}">${n} min</button>`).join('')}</div><div class="min-description">Teraz: <b>${minBooking()} minut</b>. Krótsze przerwy pozostaną widoczne w terminarzu, ale nie będą oznaczane jako dostępne. Nie zmieniamy już zapisanych wizyt.</div><div class="min-preview"><span>08:00–08:05 · Przerwa 5 min</span><span>08:05–08:25 · Wizyta 20 min</span><span>08:25–08:30 · Przerwa 5 min</span><b>Ten dzień będzie czerwony, jeśli nie ma innych wolnych przedziałów co najmniej ${minBooking()} min.</b></div></div><div class="divider"></div><h3 class="section-title">Moje wiadomości SMS</h3><p class="note">Wpisz nazwę zakładu i dostosuj wiadomości do klientów.</p><div class="card"><label class="label">Nazwa zakładu / podpis</label><input class="field" id="company" value="${escapeHTML(v.draftCompany)}" placeholder="Np. Salon Anna"><div class="sms-tabs">${[['reminder','Przypomnienie'],['change','Zmiana'],['cancel','Odwołanie']].map(([key,label])=>`<button class="sms-tab ${v.smsTab===key?'active':''}" data-a="sms-tab" data-tab="${key}">${label}</button>`).join('')}</div><label class="label">Treść wiadomości</label><textarea class="field textarea" id="template">${escapeHTML(v.draftTemplates[v.smsTab])}</textarea><div class="tags">${allowedTags.map(t=>`<button class="tag" data-a="tag" data-tag="{${t}}">{${t}}</button>`).join('')}</div><label class="label">Podgląd wiadomości</label><div id="sms-preview" class="sample"></div><p id="sms-length" class="tiny"></p><div class="actions"><button class="btn outline small" data-a="restore-template">Przywróć wzór</button><button class="btn" data-a="save-templates">Zapisz SMS-y</button></div></div><div class="divider"></div><h3 class="section-title">Kopia zapasowa</h3><p class="note">Dane zapisują się na tym urządzeniu. Aby ich nie utracić, wykonaj szyfrowaną kopię i przechowuj ją bezpiecznie.</p><div class="card"><label class="label">Hasło kopii (min. 8 znaków)</label><input class="field" type="password" id="backup-pass" value="${escapeHTML(v.backupPass)}" placeholder="Hasło do szyfrowania"><button class="btn full" data-a="backup" style="margin-top:11px">Pobierz szyfrowaną kopię</button><div class="divider"></div><button class="btn full outline" data-a="restore-toggle">Przywróć kopię z pliku</button>${v.restoreVisible?`<label class="label">Plik kopii .wzm</label><input class="field file-input" type="file" id="restore-file" accept=".wzm,application/json"><label class="label">Hasło kopii</label><input class="field" type="password" id="restore-pass" value="${escapeHTML(v.restorePass)}" placeholder="Hasło zapisanej kopii"><button class="btn full" data-a="restore-backup" style="margin-top:12px">Przywróć dane z kopii</button>`:''}</div><div class="notice warn">BETA: używaj wyłącznie przykładowych danych. Zanim wprowadzimy prawdziwych klientów, sprawdzimy ochronę danych, kopie, zgodność z RODO i niezawodność w dłuższych testach.</div><div class="divider"></div><button class="btn outline full" data-a="ask-reset">Przywróć dane demonstracyjne</button>${v.resetConfirm?`<div class="notice warn">To skasuje aktualne dane testowe z tego urządzenia. Kontynuować?<div class="actions"><button class="btn outline small" data-a="reset-no">Nie</button><button class="btn danger small" data-a="reset-yes">Tak, wyczyść</button></div></div>`:''}`}
+return `<h3 class="section-title">Godziny pracy</h3><div class="card" style="background:#eaf4fd"><div class="strong">Jednakowe godziny dla całego tygodnia</div><div class="cols2"><div><label class="label">Od</label>${timeSelect(v.allFrom,'all-from',null)}</div><div><label class="label">Do</label>${timeSelect(v.allTo,'all-to',null)}</div></div><button class="btn full" style="margin-top:11px" data-a="apply-all" ${v.allFrom>=v.allTo?'disabled':''}>Ustaw na wszystkie dni</button></div><h4 style="font-size:14px;margin:20px 0 6px">Lub ustaw każdy dzień osobno</h4><div class="card">${state.hours.map((h,i)=>`<div class="hours-row"><label class="hours-label"><input type="checkbox" data-c="toggle-day" data-i="${i}" ${h.on?'checked':''}>${names[i]}</label>${h.on?`<div class="hours-fields">${timeSelect(h.from,'from',i)}<span>–</span>${timeSelect(h.to,'to',i)}</div>`:'<span class="muted">Dzień wolny</span>'}</div>${h.on&&h.from>=h.to?'<div class="tiny danger-text">Nieprawidłowe godziny pracy.</div>':''}`).join('')}</div>${invalid?`<div class="notice warn">${invalid} zapisanych wizyt wypada poza godzinami pracy. Nie usuwamy ich automatycznie.</div>`:''}<div class="divider"></div><h3 class="section-title">Minimalny czas wizyty</h3><p class="note">Najkrótszy nieprzerwany wolny przedział, który aplikacja zaproponuje do nowej rezerwacji.</p><div class="card min-card"><div class="min-choices" role="group" aria-label="Minimalny czas nowej wizyty">${minOptions.map(n=>`<button type="button" class="min-option ${minBooking()===n?'active':''}" data-a="min-booking" data-n="${n}" aria-pressed="${minBooking()===n}">${n} min</button>`).join('')}</div><div class="min-description">Teraz: <b>${minBooking()} minut</b>. Krótsze przerwy pozostaną widoczne w terminarzu, ale nie będą oznaczane jako dostępne. Nie zmieniamy już zapisanych wizyt.</div><div class="min-preview"><span>08:00–08:05 · Przerwa 5 min</span><span>08:05–08:25 · Wizyta 20 min</span><span>08:25–08:30 · Przerwa 5 min</span><b>Ten dzień będzie czerwony, jeśli nie ma innych wolnych przedziałów co najmniej ${minBooking()} min.</b></div></div><div class="divider"></div><h3 class="section-title">Moje wiadomości SMS</h3><p class="note">Wpisz nazwę zakładu i dostosuj wiadomości do klientów.</p><div class="card"><label class="label">Nazwa zakładu / podpis</label><input class="field" id="company" value="${escapeHTML(v.draftCompany)}" placeholder="Np. Salon Anna"><div class="sms-tabs">${[['reminder','Przypomnienie'],['change','Zmiana'],['cancel','Odwołanie']].map(([key,label])=>`<button class="sms-tab ${v.smsTab===key?'active':''}" data-a="sms-tab" data-tab="${key}">${label}</button>`).join('')}</div><label class="label">Treść wiadomości</label><textarea class="field textarea" id="template">${escapeHTML(v.draftTemplates[v.smsTab])}</textarea><div class="tags">${allowedTags.map(t=>`<button class="tag" data-a="tag" data-tag="{${t}}">{${t}}</button>`).join('')}</div><label class="label">Podgląd wiadomości</label><div id="sms-preview" class="sample"></div><p id="sms-length" class="tiny"></p><div class="actions"><button class="btn outline small" data-a="restore-template">Przywróć wzór</button><button class="btn" data-a="save-templates">Zapisz SMS-y</button></div></div><div class="divider"></div><h3 class="section-title">Bezpieczeństwo · PIN</h3><div class="card trust-card">
+ <div class="strong">4-cyfrowy PIN do codziennego otwierania</div><p class="note">Silne hasło pozostaje podstawą szyfrowania bazy i odzyskania dostępu. PIN ustawiasz tylko na swoim telefonie, po jednorazowym podaniu hasła głównego.</p>
+ ${pinConfigured?`<div class="notice good">✓ PIN aktywny. Po zablokowaniu LOWRI wystarczą cztery cyfry.</div><button class="btn outline full" data-security="pin-off">Wyłącz PIN</button>`:`<form id="pin-settings-form" autocomplete="off"><label class="label" for="pin-master">Hasło główne (potwierdzenie)</label><input class="field" id="pin-master" type="password" required autocomplete="off" placeholder="Silne hasło LOWRI"><label class="label" for="pin-new">Nowy PIN · 4 cyfry</label><input class="field pin-code" id="pin-new" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" minlength="4" required autocomplete="off" placeholder="••••"><label class="label" for="pin-repeat">Powtórz PIN</label><input class="field pin-code" id="pin-repeat" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" minlength="4" required autocomplete="off" placeholder="••••"><button type="submit" class="btn full" style="margin-top:12px">Włącz PIN</button></form>`}
+ <p class="tiny">PIN jest wygodniejszy, ale mniej bezpieczny niż hasło. Klucz bazy jest dodatkowo szyfrowany PIN-em i lokalnym kluczem urządzenia. Po 5 błędnych próbach PIN zostanie wyłączony; dane pozostaną zaszyfrowane. Używaj blokady ekranu telefonu.</p></div><div class="divider"></div><h3 class="section-title">Kopia zapasowa</h3><p class="note">Dane zapisują się na tym urządzeniu. Aby ich nie utracić, wykonaj szyfrowaną kopię i przechowuj ją bezpiecznie.</p><div class="card"><label class="label">Hasło kopii (min. 8 znaków)</label><input class="field" type="password" id="backup-pass" value="${escapeHTML(v.backupPass)}" placeholder="Hasło do szyfrowania"><button class="btn full" data-a="backup" style="margin-top:11px">Pobierz szyfrowaną kopię</button><div class="divider"></div><button class="btn full outline" data-a="restore-toggle">Przywróć kopię z pliku</button>${v.restoreVisible?`<label class="label">Plik kopii .wzm</label><input class="field file-input" type="file" id="restore-file" accept=".wzm,application/json"><label class="label">Hasło kopii</label><input class="field" type="password" id="restore-pass" value="${escapeHTML(v.restorePass)}" placeholder="Hasło zapisanej kopii"><button class="btn full" data-a="restore-backup" style="margin-top:12px">Przywróć dane z kopii</button>`:''}</div><div class="notice warn">BETA: używaj wyłącznie przykładowych danych. Zanim wprowadzimy prawdziwych klientów, sprawdzimy ochronę danych, kopie, zgodność z RODO i niezawodność w dłuższych testach.</div><div class="divider"></div><button class="btn outline full" data-a="ask-reset">Przywróć dane demonstracyjne</button>${v.resetConfirm?`<div class="notice warn">To skasuje aktualne dane testowe z tego urządzenia. Kontynuować?<div class="actions"><button class="btn outline small" data-a="reset-no">Nie</button><button class="btn danger small" data-a="reset-yes">Tak, wyczyść</button></div></div>`:''}`}
 function smsPreviewUpdate(){const el=root.querySelector('#sms-preview'),length=root.querySelector('#sms-length');if(el){const t=smsSample();el.textContent=t;if(length)length.textContent=`${t.length} znaków (podgląd; faktyczny podział SMS zależy od kodowania)`}}
-function render(){if(securityMode!=='ready'){securityView();return}root.innerHTML=header()+`<div class="security-toolbar"><span>🔐 Baza szyfrowana</span><button type="button" data-security="lock">Zablokuj</button></div><main class="main">${v.notice?`<div class="notice ${v.noticeBad?'warn':'good'}" role="status">${escapeHTML(v.notice)}</div>`:''}${v.page==='home'?home():v.page==='calendar'?calendar():v.page==='clients'?clients():v.page==='sms'?sms():settings()}${v.page!=='home'?'<div class="footer">LOWRI · SECURITY BETA 1.0.1</div>':''}<div class="offline-status">${storageOK?'Dane zapisywane lokalnie na tym telefonie':'Uwaga: trwały zapis danych niedostępny'}</div></main>${v.page==='home'?'':bottomNav()}${v.page==='calendar'&&v.slot?bookingForm():''}${v.page==='calendar'&&v.breakOpen?breakForm():''}`;document.body.classList.toggle('wz-modal-open',v.page==='calendar'&&(!!v.slot||v.breakOpen));if(v.page==='calendar'&&v.slot&&!v.pickerOpen)updateSuggestions();if(v.page==='settings')smsPreviewUpdate()}
+function render(){if(securityMode!=='ready'){securityView();return}root.innerHTML=header()+`<div class="security-toolbar"><span>🔐 Baza szyfrowana</span><button type="button" data-security="lock">Zablokuj</button></div><main class="main">${v.notice?`<div class="notice ${v.noticeBad?'warn':'good'}" role="status">${escapeHTML(v.notice)}</div>`:''}${v.page==='home'?home():v.page==='calendar'?calendar():v.page==='clients'?clients():v.page==='sms'?sms():settings()}${v.page!=='home'?'<div class="footer">LOWRI · SECURITY BETA 1.0.2 PIN</div>':''}<div class="offline-status">${storageOK?'Dane zapisywane lokalnie na tym telefonie':'Uwaga: trwały zapis danych niedostępny'}</div></main>${v.page==='home'?'':bottomNav()}${v.page==='calendar'&&v.slot?bookingForm():''}${v.page==='calendar'&&v.breakOpen?breakForm():''}`;document.body.classList.toggle('wz-modal-open',v.page==='calendar'&&(!!v.slot||v.breakOpen));if(v.page==='calendar'&&v.slot&&!v.pickerOpen)updateSuggestions();if(v.page==='settings')smsPreviewUpdate()}
 function parseClock(raw){
  const s=String(raw??'').trim();
  const match=/^(\d{1,2}):(\d{2})$/.exec(s)||/^(\d{1,2})(\d{2})$/.exec(s);
@@ -307,13 +404,13 @@ function saveBooking(){
   const changedTime=editing.date!==v.date||editing.time!==v.slot||editing.duration!==dur;
   const changedClient=editing.clientId!==c.id;
   const oldDate=editing.date,oldTime=editing.time;
-  if(changedClient&&editing.everSent){
+  if(changedClient){
    // The old recipient must be notified. Snapshot their contact before changing the booking.
    newTask('cancel',editing,oldDate,oldTime);
   }
   editing.clientId=c.id;editing.date=v.date;editing.time=v.slot;editing.duration=dur;
-  if(changedTime||changedClient){if(editing.everSent&&!changedClient)newTask('change',editing,oldDate,oldTime);editing.reminder='ready';if(changedClient)editing.everSent=false}
-  notice('Zmieniono wizytę: '+span(editing)+' · '+c.name+'.'+(editing.everSent&&changedTime?' Przygotowano SMS o zmianie.':''));
+  if(changedTime||changedClient){if(changedTime&&!changedClient)newTask('change',editing,oldDate,oldTime);editing.reminder='ready';if(changedClient)editing.everSent=false}
+  notice('Zmieniono wizytę: '+span(editing)+' · '+c.name+'.'+((changedTime||changedClient)?' SMS o zmianie lub odwołaniu czeka w Przypomnieniach.':''));
  }else{
   const b={id:Math.max(0,...state.bookings.map(x=>x.id))+1,clientId:c.id,date:v.date,time:v.slot,duration:dur,reminder:'ready',everSent:false};state.bookings.push(b);notice('Zapisano: '+span(b)+' · '+c.name);
  }
@@ -396,11 +493,12 @@ else if(a==='move'){v.moving=id;v.slot=null;v.editBooking=null;notice('Wybierz n
 else if(a==='stop-move')v.moving=null;
 else if(a==='ask-cancel')v.confirmCancel=id;
 else if(a==='cancel-no')v.confirmCancel=null;
-else if(a==='cancel-yes'){const x=findBooking(id);if(x){if(x.everSent)newTask('cancel',x,x.date,x.time);else state.tasks=state.tasks.filter(t=>!(t.bookingId===x.id&&t.status==='ready'));state.bookings=state.bookings.filter(bb=>bb.id!==id);v.confirmCancel=null;v.moving=null;notice(x.everSent?'Odwołano wizytę. Przygotowano SMS do klienta.':'Odwołano wizytę i niewysłane przypomnienie.');save()}}
+else if(a==='cancel-yes'){const x=findBooking(id);if(x){newTask('cancel',x,x.date,x.time);state.bookings=state.bookings.filter(bb=>bb.id!==id);v.confirmCancel=null;v.moving=null;notice('Odwołano wizytę. W Przypomnieniach czeka SMS o odwołaniu.');save()}}
 else if(a==='add-client'){v.addClient=true;v.editId=null;v.editName='';v.editPhone=''}
 else if(a==='edit-client'){const c=findClient(id);v.editId=id;v.addClient=false;v.editName=c.name;v.editPhone=c.phone}
 else if(a==='close-client'){v.addClient=false;v.editId=null}
 else if(a==='save-client'){const name=v.editName.trim(),phone=number(v.editPhone);if(!name||phone.length<7||phone.length>15)notice('Podaj nazwę klienta i telefon (7–15 cyfr).',true);else if(v.editId!==null){const c=findClient(v.editId);c.name=name;c.phone=phone;v.editId=null;notice('Zmieniono dane klienta.');save()}else{state.clients.push({id:Math.max(0,...state.clients.map(c=>c.id))+1,name,phone});v.addClient=false;notice('Dodano klienta.');save()}}
+else if(a==='sms-filter'){v.smsMode=b.dataset.mode;v.compose=null;}
 else if(a==='draft'){v.compose={type:b.dataset.type,id}}
 else if(a==='close-draft')v.compose=null;
 else if(a==='copy-sms'){const type=b.dataset.type,t=type==='reminder'?reminderMessage(findBooking(id)):taskMessage(state.tasks.find(x=>x.id===id));try{await navigator.clipboard.writeText(t);notice('Skopiowano treść wiadomości.')}catch{notice('Nie udało się skopiować automatycznie.',true)}}
@@ -424,11 +522,12 @@ render();
  try{
   if(!globalThis.crypto?.subtle||!globalThis.indexedDB)throw new Error('Brak WebCrypto lub IndexedDB');
   db=await openDB();const saved=await readDB();
-  if(saved?.format===SECURE_FORMAT&&saved?.version===1){encryptedRecord=saved;securityMode='unlock'}
+  if(saved?.format===SECURE_FORMAT&&saved?.version===1){encryptedRecord=saved;securityMode='unlock';try{await refreshPin()}catch(e){console.warn('PIN info unavailable',e);pinConfigured=false}}
   else if(saved&&validData(saved)){state=normalizeState(saved);securityMode='migrate'}
   else if(saved){throw new Error('Nieznany format danych - nie nadpisujemy go!')}
   else securityMode='setup';
   storageOK=true;
+  try{await writeLocalRecord(OLD_TRUST_RECORD,null)}catch(e){console.warn('Legacy quick unlock cleanup',e)}
  }catch(err){console.error('Secure IndexedDB init',err);storageOK=false;securityMode='unavailable';securityError='Nie można bezpiecznie otworzyć danych. Niczego nie usunięto.'}
  render();
  if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
