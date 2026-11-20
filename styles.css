@@ -25,3 +25,38 @@
 .picker-row small{font-size:12px;color:#62758B}
 .picker-row:active{background:#EDF6FC}
 @media(max-width:380px){.time-edit-grid{gap:6px}.stepper button{min-width:28px}.stepper b{font-size:14px}.visit-actions{flex-wrap:wrap}.timeline-free{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Wizmero 0.8: godzinowy widok dnia oraz mobilne okno wizyty */
+.day-timeline{gap:0;margin:12px 0;border:1px solid #BDD1E6;border-radius:13px;overflow:hidden;background:white}
+.timeline-hour{min-height:56px;padding:10px 14px;background:white;color:#173451;border:0;border-bottom:1px solid #CBDCEE;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left}
+.timeline-hour:active,.timeline-hour:hover{background:#EDF6FD}
+.hour-label{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+.hour-range{font-size:12px;color:#6E8094;flex:1;text-align:right}
+.hour-add{font-size:21px;color:#3671A1;font-weight:650}
+.timeline-visit{border-radius:0;border:0;border-bottom:1px solid #A9C4DD;border-left:5px solid #3578B0;background:#DCE8F7;padding:13px 11px}
+.timeline-visit-head .strong{font-size:15px}
+.visit-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
+.visit-actions .btn{min-width:0;white-space:normal;padding:9px 4px}
+body.wz-modal-open{overflow:hidden;overscroll-behavior:none}
+.sheet-backdrop{position:fixed;inset:0;background:rgba(12,30,52,.59);z-index:300;display:flex;align-items:flex-end;justify-content:center;overscroll-behavior:contain}
+.booking-sheet{background:#F8FBFE;border-radius:23px 23px 0 0;width:min(620px,100%);height:auto;max-height:calc(100dvh - env(safe-area-inset-top,0px) - 18px);display:flex;flex-direction:column;box-shadow:0 -8px 32px #001A3650;overflow:hidden;animation:sheet-up .18s ease-out}
+@keyframes sheet-up{from{transform:translateY(25px);opacity:.75}to{transform:translateY(0);opacity:1}}
+.sheet-handle{height:5px;width:46px;flex:none;border-radius:10px;background:#C0CEDA;margin:9px auto 0}
+.sheet-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 18px 12px;border-bottom:1px solid #D7E5F0;background:#F8FBFE;flex:none}
+.sheet-header h2{font-size:20px;color:#163655;margin:3px 0 0;line-height:1.2}
+.sheet-close{background:#E5EDF5;border:0;border-radius:11px;width:40px;height:40px;flex:none;color:#385F82;font-size:27px;line-height:1}
+.sheet-scroll{overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:3px 18px 18px;flex:1;min-height:0}
+.sheet-explain{line-height:1.4;margin:7px 0 0}
+.sheet-footer{display:grid;grid-template-columns:1fr 1.5fr;gap:10px;padding:11px 16px calc(12px + env(safe-area-inset-bottom,0px));background:white;border-top:1px solid #D7E5F0;flex:none;box-shadow:0 -4px 12px #153E6014}
+.sheet-footer .btn{white-space:normal;min-width:0}
+.sheet-scroll .time-edit-grid{gap:9px;margin-top:2px}
+.sheet-scroll .stepper{padding:4px 5px;gap:3px;min-width:0}
+.sheet-scroll .stepper button{width:34px;min-width:30px;flex:none}
+.time-direct{color:#133654;font-size:16px;font-weight:800;border:0;background:transparent;padding:5px 0;max-width:100%;min-width:0;width:100%;font-variant-numeric:tabular-nums;text-align:center}
+.time-direct::-webkit-calendar-picker-indicator{display:none}
+.time-direct:focus{background:#EFF7FE;outline:2px solid #7EAEDA}
+.clients-picker-button{margin-top:15px;min-height:45px}
+.sheet-scroll .picker-row{min-height:62px;border-bottom:1px solid #E4EDF4}
+@media(min-width:650px){.sheet-backdrop{align-items:center;padding:28px}.booking-sheet{border-radius:20px;max-height:90dvh}}
+@media(max-width:390px){.sheet-scroll{padding-left:13px;padding-right:13px}.sheet-header{padding-left:13px;padding-right:13px}.sheet-scroll .time-edit-grid{gap:6px}.time-direct{font-size:14px}.sheet-scroll .stepper button{width:28px;min-width:27px}.hour-label{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.booking-sheet{animation:none}}
